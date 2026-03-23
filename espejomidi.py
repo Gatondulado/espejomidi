@@ -92,11 +92,17 @@ def cargar_config():
 def guardar_config():
     data = {"tema": tema_actual.get(), "paneles": []}
     for _, ctrl, refs, cb_e, cb_s, corr_v, oct_v in paneles:
+        fijar = False
+        try:
+            fijar = fijar_do_var.get()
+        except:
+            pass
         data["paneles"].append({
             "entrada":    cb_e.get(),
             "salida":     cb_s.get(),
             "correccion": corr_v.get(),
             "octava":     oct_v.get(),
+            "fijar_do":   fijar,
         })
     try:
         with open(CONFIG_FILE, "w") as f:
@@ -372,32 +378,97 @@ def crear_panel(parent, config=None):
     controles = reg(tk.Frame(body), "frame", {"bg":"PANEL"})
     controles.pack(anchor="center", pady=(2, 0))
 
-    def num_col(parent, titulo, var, min_v, max_v):
-        col = reg(tk.Frame(parent), "frame", {"bg":"PANEL"})
-        col.pack(side="left", padx=12)
-        reg(tk.Label(col, text=titulo, font=("Courier New", 8)),
-            "label", {"bg":"PANEL","fg":"SUBTEXT"}).pack()
-        row = reg(tk.Frame(col), "frame", {"bg":"PANEL"})
-        row.pack()
-        reg(tk.Button(row, text="−", relief="flat", width=3,
-            font=("Courier New", 12), cursor="hand2",
-            command=lambda: var.set(max(min_v, var.get()-1))),
-            "btn", {"bg":"ENTRY_BG","fg":"TEXT"}).pack(side="left")
-        reg(tk.Label(row, textvariable=var,
-            font=("Courier New", 13, "bold"), width=4),
-            "entry_lbl", {"fg":"ACCENT2"}).pack(side="left", padx=1)
-        reg(tk.Button(row, text="+", relief="flat", width=3,
-            font=("Courier New", 12), cursor="hand2",
-            command=lambda: var.set(min(max_v, var.get()+1))),
-            "btn", {"bg":"ENTRY_BG","fg":"TEXT"}).pack(side="left")
 
-    corr_var = tk.IntVar(value=config.get("correccion", 3) if config else 3)
-    oct_var  = tk.IntVar(value=config.get("octava",     0) if config else 0)
+    corr_var     = tk.IntVar(value=config.get("correccion", 3) if config else 3)
+    oct_var      = tk.IntVar(value=config.get("octava",     0) if config else 0)
+    fijar_do_var = tk.BooleanVar(value=config.get("fijar_do", False) if config else False)
 
-    num_col(controles, "CORRECCIÓN DE NOTA", corr_var, -24, 24)
-    num_col(controles, "OCTAVA",             oct_var,   -4,  4)
+    # Guardar la corrección base para el cálculo de Fijar Do
+    corr_base = [corr_var.get()]
+
+    def on_oct_change(d):
+        nueva_oct = max(-4, min(4, oct_var.get() + d))
+        oct_var.set(nueva_oct)
+        if fijar_do_var.get():
+            nueva_corr = corr_base[0] - (nueva_oct * 12)
+            corr_var.set(max(-48, min(48, nueva_corr)))
+        if ctrl.activo:
+            ctrl.octava     = oct_var.get()
+            ctrl.correccion = corr_var.get()
+
+    def on_corr_change(d):
+        corr_var.set(max(-48, min(48, corr_var.get() + d)))
+        corr_base[0] = corr_var.get()
+        if fijar_do_var.get():
+            # Recalcular con la nueva base
+            nueva_corr = corr_base[0] - (oct_var.get() * 12)
+            corr_var.set(max(-48, min(48, nueva_corr)))
+        if ctrl.activo:
+            ctrl.correccion = corr_var.get()
+
+    # Corrección de nota
+    corr_col = reg(tk.Frame(controles), "frame", {"bg":"PANEL"})
+    corr_col.pack(side="left", padx=12)
+    reg(tk.Label(corr_col, text="CORRECCIÓN DE NOTA", font=("Courier New", 8)),
+        "label", {"bg":"PANEL","fg":"SUBTEXT"}).pack()
+    corr_row = reg(tk.Frame(corr_col), "frame", {"bg":"PANEL"})
+    corr_row.pack()
+    reg(tk.Button(corr_row, text="−", relief="flat", width=3,
+        font=("Courier New", 12), cursor="hand2",
+        command=lambda: on_corr_change(-1)),
+        "btn", {"bg":"ENTRY_BG","fg":"TEXT"}).pack(side="left")
+    reg(tk.Label(corr_row, textvariable=corr_var,
+        font=("Courier New", 13, "bold"), width=4),
+        "entry_lbl", {"fg":"ACCENT2"}).pack(side="left", padx=1)
+    reg(tk.Button(corr_row, text="+", relief="flat", width=3,
+        font=("Courier New", 12), cursor="hand2",
+        command=lambda: on_corr_change(1)),
+        "btn", {"bg":"ENTRY_BG","fg":"TEXT"}).pack(side="left")
+
+    # Octava
+    oct_col = reg(tk.Frame(controles), "frame", {"bg":"PANEL"})
+    oct_col.pack(side="left", padx=12)
+    reg(tk.Label(oct_col, text="OCTAVA", font=("Courier New", 8)),
+        "label", {"bg":"PANEL","fg":"SUBTEXT"}).pack()
+    oct_row = reg(tk.Frame(oct_col), "frame", {"bg":"PANEL"})
+    oct_row.pack()
+    reg(tk.Button(oct_row, text="−", relief="flat", width=3,
+        font=("Courier New", 12), cursor="hand2",
+        command=lambda: on_oct_change(-1)),
+        "btn", {"bg":"ENTRY_BG","fg":"TEXT"}).pack(side="left")
+    reg(tk.Label(oct_row, textvariable=oct_var,
+        font=("Courier New", 13, "bold"), width=4),
+        "entry_lbl", {"fg":"ACCENT2"}).pack(side="left", padx=1)
+    reg(tk.Button(oct_row, text="+", relief="flat", width=3,
+        font=("Courier New", 12), cursor="hand2",
+        command=lambda: on_oct_change(1)),
+        "btn", {"bg":"ENTRY_BG","fg":"TEXT"}).pack(side="left")
+
+    # Fijar Do checkbox
+    fijar_row = reg(tk.Frame(body), "frame", {"bg":"PANEL"})
+    fijar_row.pack(pady=(8, 0))
+
+    def toggle_fijar():
+        corr_base[0] = corr_var.get()
+        if fijar_do_var.get():
+            nueva_corr = corr_base[0] - (oct_var.get() * 12)
+            corr_var.set(max(-48, min(48, nueva_corr)))
+            if ctrl.activo:
+                ctrl.correccion = corr_var.get()
+
+    fijar_chk = tk.Checkbutton(fijar_row, text="FIJAR DO",
+        variable=fijar_do_var, command=toggle_fijar,
+        font=("Courier New", 8, "bold"),
+        relief="flat", bd=0, cursor="hand2")
+    reg(fijar_chk, "label", {"bg":"PANEL","fg":"ACCENT2"})
+    fijar_chk.config(selectcolor=TEMAS[tema_actual.get()]["ENTRY_BG"],
+                     activebackground=TEMAS[tema_actual.get()]["PANEL"])
+    fijar_chk.pack(side="left")
+
+    tip(fijar_chk, "Ajusta la corrección automáticamente al cambiar de octava para mantener el Do en su lugar")
 
     def aplicar_controles():
+        corr_base[0] = corr_var.get()
         if ctrl.activo:
             ctrl.correccion = corr_var.get()
             ctrl.octava     = oct_var.get()
@@ -407,7 +478,7 @@ def crear_panel(parent, config=None):
         command=aplicar_controles, cursor="hand2")
     reg(_btn_aplic, "btn", {"bg":"ENTRY_BG","fg":"ACCENT2"})
     tip(_btn_aplic, "Aplica los cambios de corrección y octava sin reiniciar el espejo")
-    _btn_aplic.pack(pady=(6, 0))
+    _btn_aplic.pack(pady=(4, 0))
 
     # Botones
     btns = reg(tk.Frame(panel), "frame", {"bg":"PANEL"})
@@ -501,7 +572,7 @@ top.pack(fill="x", padx=16, pady=(18, 8))
 
 reg(tk.Label(top, text="⬡ ESPEJO MIDI", font=("Courier New", 16, "bold")),
     "label", {"bg":"BG","fg":"ACCENT2"}).pack(side="left")
-reg(tk.Label(top, text="v1.0", font=("Courier New", 8)),
+reg(tk.Label(top, text="v1.1", font=("Courier New", 8)),
     "label", {"bg":"BG","fg":"SUBTEXT"}).pack(side="left", padx=6)
 
 _btn_cons = tk.Button(top, text="⌨  CONSOLA", relief="flat",
