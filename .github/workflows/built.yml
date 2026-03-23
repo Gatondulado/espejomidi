@@ -19,14 +19,4 @@ jobs:
         with:
           name: EspejoMIDI
           path: dist/EspejoMIDI.exe
-```
 
-5. Click en **"Commit changes"**
-
----
-
-### Opción B — Desde tu ordenador
-
-1. Dentro de la carpeta de tu repositorio crea las carpetas:
-```
-espejomidi\.github\workflows\
