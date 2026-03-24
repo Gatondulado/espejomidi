@@ -55,7 +55,7 @@ El rango útil suele estar entre 0 y 12 semitonos dependiendo del controlador.
 Compilar a .exe
 ```bash
 pip install pyinstaller
-python -m PyInstaller --onefile --windowed --icon="espejomidi.ico" --hidden-import=rtmidi --hidden-import=mido.backends.rtmidi --collect-all mido --name "EspejoMIDI" espejo.py
+python -m PyInstaller --onefile --windowed --icon="espejomidi.ico" --hidden-import=rtmidi --hidden-import=mido.backends.rtmidi --collect-all mido --name "EspejoMIDI" espejomidi.py
 ```
 El ejecutable se genera en la carpeta `dist/`.
 ---
@@ -69,4 +69,4 @@ loopMIDI — puertos MIDI virtuales en Windows
 Licencia
 MIT — úsalo, modifícalo y compártelo libremente.
 ---
-Desarrollado para pianistas zurdos o para quien quiera experimentar con una nueva forma de tocar.
+Desarrollado para musicos zurdos o para quienes quieran experimentar con una manera diferente.
